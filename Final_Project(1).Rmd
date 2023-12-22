@@ -1,0 +1,189 @@
+---
+title: "Final_Project"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-03-11"
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+#1
+```{r}
+# data processing
+df_test <- read.csv("spam-test.txt")
+df_test_label = as.data.frame(df_test[,58])
+df_test_std <- as.data.frame.matrix(scale(df_test[,1:57], TRUE, TRUE)) 
+df_test_std <- cbind(df_test_std,df_test_label)
+
+df_test_log <- log(df_test[,1:57] + 1)
+df_test_log <- cbind(df_test_log,df_test_label)
+
+df_test_I <- data.frame(df_test)[,1:57]
+for (col in 1:ncol(df_test_I)){
+  for (row in 1:nrow(df_test_I)){
+    if (df_test_I[row,col] > 0){
+      df_test_I[row,col] = 1
+    }
+    else{
+      df_test_I[row,col] = 0
+    }
+  }
+}
+df_test_I <- cbind(df_test_I,df_test_label)
+
+
+df_train <- read.csv("spam-train.txt")
+df_train_label = as.data.frame(df_train[,58])
+df_train_std <- as.data.frame.matrix(scale(df_train[1:57], TRUE, TRUE)) 
+df_train_std <- cbind(df_train_std,df_train_label)
+
+df_train_log <- log(df_train[,1:57] + 1)
+df_train_log <- cbind(df_train_log, df_train_label)
+
+df_train_I <- data.frame(df_train)[,1:57]
+for (col in 1:ncol(df_train_I)){
+  for (row in 1:nrow(df_train_I)){
+    if (df_train_I[row,col] > 0){
+      df_train_I[row,col] = 1
+    }
+    else{
+      df_train_I[row,col] = 0
+    }
+  }
+}
+df_train_I <- cbind(df_train_I, df_train_label)
+```
+
+#a
+```{r}
+for (col in 1:ncol(df_train_I)) {
+  for (col2 in col:ncol(df_train_I)) {
+    if (col!=col2 && 
+        !is.na(cor(df_train_I[,col], df_train_I[,col2])) 
+        && cor(df_train_I[,col], df_train_I[,col2]) > 0.8){
+      cat("scatter plot between columns",col,"and",col2,'\n')
+      plot(df_train_I[,col], df_train_I[,col2])
+    }
+  }
+}
+
+for (col in 1:ncol(df_train_std)) {
+  for (col2 in col:ncol(df_train_std)) {
+    if (col!=col2 && 
+        !is.na(cor(df_train_std[,col], df_train_std[,col2])) 
+        && cor(df_train_std[,col], df_train_std[,col2]) > 0.8){
+      cat("scatter plot between columns",col,"and",col2,'\n')
+      plot(df_train_std[,col], df_train_std[,col2])
+    }
+  }
+}
+
+for (col in 1:ncol(df_train_log)) {
+  for (col2 in col:ncol(df_train_log)) {
+    if (col!=col2 && 
+        !is.na(cor(df_train_log[,col], df_train_log[,col2])) 
+        && cor(df_train_log[,col], df_train_log[,col2]) > 0.8){
+      cat("scatter plot between columns",col,"and",col2,'\n')
+      plot(df_train_log[,col], df_train_log[,col2])
+    }
+  }
+}
+
+``` 
+
+#b
+```{r}
+#logistic regression
+Logis_Reg_std_train = glm((df_train[,58])~., data = df_train_std,
+                          family = binomial())
+summary(Logis_Reg_std_train)
+Logis_Reg_log_train = glm((df_train[,58])~., data = df_train_log,
+                          family = binomial())
+summary(Logis_Reg_log_train)
+Logis_Reg_I_train = glm((df_train[,58])~., data = df_train_I,
+                        family = binomial())
+summary(Logis_Reg_I_train)
+```
+#c
+```{r}
+#lda & qda
+library(MASS)
+lda_std_train <- lda((df_train_std[,58])~.,data=df_train_std)
+print(lda_std_train)
+
+lda_std_log <- lda((df_train_log[,58])~.,data=df_train_log)
+print(lda_std_log)
+
+lda_std_I <- lda((df_train_I[,58])~.,data=df_train_I)
+print(lda_std_I)
+
+qda_std_train <- qda((df_train_std[,58])~.,data=df_train_std)
+print(qda_std_train)
+
+qda_std_log <- qda((df_train_log[,58])~.,data=df_train_log)
+print(qda_std_log)
+
+qda_std_I <- qda((df_train_I[,58])~.,data=df_train_I)
+print(qda_std_I)
+```
+
+#d
+```{r}
+#linear and nonlinear SVM
+library(e1071)
+#non linear
+tune.gaussian.std=tune(svm, df_train_std[,58]~., data=df_train_std,
+                       kernel ="radial", 
+                   ranges=list(cost=seq(0.005, 0.5, length=50),
+                               gamma=c(0.1,0.5,1,1.5,2)))
+# Check the selection results
+summary(tune.gaussian.std)
+# Choose the best model (classifier with optimal C)
+bestmod.gaussian.std =tune.gaussian.std$best.model
+# Check the classifier
+summary(bestmod.gaussian.std)
+# Index of support vectors
+bestmod.gaussian.std$index
+
+tune.linear.std=tune(svm, df_train_std[,58]~., data=df_train_std,
+                       kernel ="linear", 
+                   ranges=list(cost=seq(0.005, 0.5, length=50),
+                               gamma=c(0.1,0.5,1,1.5,2)))
+# Check the selection results
+summary(tune.linear.std)
+# Choose the best model (classifier with optimal C)
+bestmod.linear.std =tune.linear.std$best.model
+# Check the classifier
+summary(bestmod.linear.std)
+# Index of support vectors
+bestmod.linear.std$index
+
+```
+
+#e
+```{r}
+library(tree)
+tree_std <- tree(df_train_std[,58]~., data = df_train_std)
+summary(tree_std)
+cross_val =cv.tree(tree_std, K=5)
+cv_size = cross_val$size[which.min(cross_val$dev)]
+tree_prune_std = prune.tree(tree_std, best=cv_size)
+summary(tree_prune_std)
+
+tree_log <- tree(df_train_log[,58]~., data = df_train_log)
+summary(tree_log)
+cross_val =cv.tree(tree_log, K=5)
+cv_size = cross_val$size[which.min(cross_val$dev)]
+tree_prune_log = prune.tree(tree_log, best=cv_size)
+
+tree_I <- tree(df_train_I[,58]~., data = df_train_I)
+summary(tree_I)
+cross_val =cv.tree(tree_I, K=5)
+cv_size = cross_val$size[which.min(cross_val$dev)]
+tree_prune_I = prune.tree(tree_I, best=cv_size)
+```
+
+
